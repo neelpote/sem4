@@ -338,12 +338,12 @@ async function loadRecentTransactions() {
       // Create a new <li> element for this transaction
       const listItem = document.createElement('li');
 
-      // Set the inner HTML of the list item:
-      // - A clickable link showing the short signature
-      // - target="_blank" opens it in a new tab
-      // - A small span showing the timestamp
+      // Build the row: left side has icon + link, right side has timestamp
       listItem.innerHTML =
-        '<a href="' + explorerUrl + '" target="_blank">' + shortSignature + '</a>' +
+        '<div class="tx-left">' +
+          '<div class="tx-icon">&#8599;</div>' +
+          '<a class="tx-id" href="' + explorerUrl + '" target="_blank">' + shortSignature + '</a>' +
+        '</div>' +
         '<span class="tx-time">' + timeString + '</span>';
 
       // Add this list item to the <ul>
@@ -374,9 +374,17 @@ function showWalletScreen() {
   document.getElementById('onboarding-screen').style.display = 'none';
   document.getElementById('wallet-screen').style.display = 'block';
 
-  // Fill in the wallet address field
+  // Fill in the wallet address
   if (userKeypair) {
-    document.getElementById('wallet-address').value = userKeypair.publicKey.toString();
+    const fullAddress = userKeypair.publicKey.toString();
+
+    // Put the full address in the hidden input (used for copying)
+    document.getElementById('wallet-address').value = fullAddress;
+
+    // Show a shortened version in the visible address bar
+    // e.g. "HnAz4...dQzY" — first 6 chars + ... + last 4 chars
+    const shortAddress = fullAddress.slice(0, 6) + '...' + fullAddress.slice(-4);
+    document.getElementById('wallet-address-short').textContent = shortAddress;
   }
 }
 
@@ -425,15 +433,27 @@ function showStatus(message, type) {
 // SETUP: Wire up all button click events
 // ============================================================
 function setupButtonListeners() {
-  // "Generate New Wallet" button on the onboarding screen
+  // "Create Wallet" button on the onboarding screen
   document.getElementById('generate-wallet-btn').addEventListener('click', generateNewWallet);
 
   // "Copy" button next to the wallet address
   document.getElementById('copy-address-btn').addEventListener('click', copyAddress);
 
-  // "Refresh Balance" button
+  // "Refresh" action button
   document.getElementById('refresh-balance-btn').addEventListener('click', refreshBalance);
 
-  // "Send SOL" button in the send form
+  // "Send" action button — shows the send panel
+  document.getElementById('open-send-btn').addEventListener('click', function () {
+    document.getElementById('send-panel').style.display = 'block';
+    document.getElementById('main-content').style.display = 'none';
+  });
+
+  // "Back" button inside send panel — hides it again
+  document.getElementById('close-send-btn').addEventListener('click', function () {
+    document.getElementById('send-panel').style.display = 'none';
+    document.getElementById('main-content').style.display = 'block';
+  });
+
+  // "Send SOL" submit button inside the send panel
   document.getElementById('send-sol-btn').addEventListener('click', sendSOL);
 }

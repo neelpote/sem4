@@ -1,274 +1,442 @@
 /* =============================================
-   SIMPLE SOLANA WALLET - STYLESHEET
-   Plain CSS, no frameworks, no tricks.
+   XENON WALLET — CSS
+   Inspired by Fuzz wallet dark UI
    ============================================= */
 
-/* Reset default browser spacing */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-/* Body / popup window size */
 body {
-  width: 400px;
-  min-height: 480px;
-  font-family: Arial, sans-serif;
+  width: 360px;
+  min-height: 580px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background-color: #141414;
+  color: #ffffff;
+  overflow-x: hidden;
+}
+
+/* =============================================
+   ONBOARDING
+   ============================================= */
+#onboarding-screen {
+  min-height: 580px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #141414;
+}
+
+.ob-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 0 32px;
+  gap: 12px;
+}
+
+.ob-logo {
+  width: 64px;
+  height: 64px;
+  background-color: #1e1e1e;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+.ob-title {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: #ffffff;
+}
+
+.ob-sub {
   font-size: 14px;
-  background-color: #f0f0f0;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.ob-btn {
+  width: 100%;
+  padding: 14px;
+  background-color: #ffffff;
+  color: #141414;
+  font-size: 15px;
+  font-weight: 700;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: opacity 0.2s;
+}
+
+.ob-btn:hover {
+  opacity: 0.88;
+}
+
+.ob-note {
+  font-size: 11px;
+  color: #444;
+  margin-top: 4px;
+}
+
+/* =============================================
+   TOP BAR
+   ============================================= */
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 20px 10px;
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.topbar-name {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  color: #ffffff;
+}
+
+.topbar-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: #aaa;
+  background-color: #222;
+  border: 1px solid #333;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
+/* =============================================
+   HERO BALANCE AREA
+   ============================================= */
+.hero {
+  padding: 10px 20px 24px;
+}
+
+.hero-label {
+  font-size: 12px;
+  color: #555;
+  font-weight: 500;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.hero-balance {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.hero-sol {
+  font-size: 48px;
+  font-weight: 700;
+  letter-spacing: -2px;
+  color: #ffffff;
+  line-height: 1;
+}
+
+.hero-unit {
+  font-size: 22px;
+  font-weight: 400;
+  color: #555;
+  letter-spacing: -0.5px;
+}
+
+/* Address pill */
+.address-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background-color: #1e1e1e;
+  border: 1px solid #2a2a2a;
+  border-radius: 10px;
+  padding: 8px 12px;
+}
+
+.address-pill span {
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  color: #888;
+}
+
+.pill-copy-btn {
+  background: none;
+  border: 1px solid #333;
+  color: #aaa;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  width: auto;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.pill-copy-btn:hover {
+  border-color: #666;
+  color: #fff;
+}
+
+/* =============================================
+   ACTION BUTTONS (Send / Refresh)
+   ============================================= */
+.actions {
+  display: flex;
+  gap: 12px;
+  padding: 0 20px 24px;
+}
+
+.action-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.action-icon {
+  width: 52px;
+  height: 52px;
+  background-color: #1e1e1e;
+  border: 1px solid #2a2a2a;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.action-item:hover .action-icon {
+  background-color: #2a2a2a;
+  border-color: #444;
+}
+
+.action-item span {
+  font-size: 12px;
+  font-weight: 500;
+  color: #888;
+}
+
+/* =============================================
+   SEND PANEL (slides in over main content)
+   ============================================= */
+.send-panel {
+  background-color: #141414;
+}
+
+.send-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #ffffff;
+  border-bottom: 1px solid #1e1e1e;
+}
+
+.back-btn {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 13px;
+  cursor: pointer;
+  width: auto;
+  padding: 0;
+  font-weight: 500;
+  transition: color 0.15s;
+}
+
+.back-btn:hover {
+  color: #fff;
+}
+
+.send-body {
   padding: 20px;
 }
 
-/* =============================================
-   ONBOARDING SCREEN
-   ============================================= */
-#onboarding-screen {
-  text-align: center;
-  padding: 50px 20px;
-}
-
-#onboarding-screen h2 {
-  font-size: 22px;
-  color: #222;
-  margin-bottom: 12px;
-}
-
-#onboarding-screen p {
-  color: #555;
-  margin-bottom: 30px;
-  line-height: 1.6;
-}
-
-/* =============================================
-   HEADER
-   ============================================= */
-.header {
-  text-align: center;
-  margin-bottom: 18px;
-  padding-bottom: 14px;
-  border-bottom: 2px solid #ccc;
-}
-
-.header h1 {
-  font-size: 18px;
-  color: #222;
-}
-
-/* =============================================
-   SECTION CARDS
-   ============================================= */
-.section {
-  background-color: #ffffff;
-  padding: 14px;
-  margin-bottom: 14px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-}
-
-.section h3 {
-  font-size: 15px;
-  color: #333;
-  margin-bottom: 12px;
-  border-bottom: 1px solid #eee;
-  padding-bottom: 8px;
-}
-
-/* =============================================
-   LABELS
-   ============================================= */
 label {
   display: block;
-  font-weight: bold;
-  color: #444;
-  margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 8px;
 }
 
-/* =============================================
-   INPUT FIELDS
-   ============================================= */
 input[type="text"],
 input[type="number"] {
   width: 100%;
-  padding: 9px 10px;
-  margin-bottom: 12px;
-  border: 1px solid #bbb;
-  border-radius: 4px;
-  font-size: 13px;
-  color: #333;
-  background-color: #fafafa;
+  padding: 12px 14px;
+  margin-bottom: 18px;
+  background-color: #1e1e1e;
+  border: 1px solid #2a2a2a;
+  border-radius: 10px;
+  font-size: 14px;
+  color: #ffffff;
+  outline: none;
+  transition: border-color 0.2s;
 }
 
 input[type="text"]:focus,
 input[type="number"]:focus {
-  outline: none;
-  border-color: #9945FF;
-  background-color: #fff;
+  border-color: #555;
 }
 
-/* Read-only address field */
-input[readonly] {
-  background-color: #f0f0f0;
-  cursor: default;
-  color: #555;
-  font-size: 11px;
+input::placeholder {
+  color: #333;
 }
 
-/* =============================================
-   ADDRESS ROW (input + copy button side by side)
-   ============================================= */
-.address-container {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
-}
-
-.address-container input {
-  flex: 1;
-  margin-bottom: 0;
-}
-
-.address-container button {
-  width: auto;
-  padding: 9px 14px;
-  flex-shrink: 0;
-}
-
-/* =============================================
-   BALANCE DISPLAY
-   ============================================= */
-.balance-display {
-  font-size: 30px;
-  font-weight: bold;
-  color: #14F195;   /* Solana green */
-  text-align: center;
-  padding: 18px;
-  background-color: #1a1a2e;  /* Dark background makes green pop */
-  border: 2px solid #333;
-  border-radius: 6px;
-  margin-bottom: 12px;
-  letter-spacing: 1px;
-}
-
-/* =============================================
-   BUTTONS
-   ============================================= */
-button {
+.send-btn {
   width: 100%;
-  padding: 11px;
-  background-color: #9945FF;  /* Solana purple */
-  color: white;
+  padding: 14px;
+  background-color: #ffffff;
+  color: #141414;
+  font-size: 15px;
+  font-weight: 700;
   border: none;
-  border-radius: 5px;
-  font-size: 14px;
-  font-weight: bold;
+  border-radius: 12px;
   cursor: pointer;
+  transition: opacity 0.2s;
 }
 
-button:hover {
-  background-color: #7d37d9;
-}
-
-button:active {
-  background-color: #6b2ec2;
-}
-
-/* Copy and Refresh buttons use Solana green */
-#copy-address-btn,
-#refresh-balance-btn {
-  background-color: #14F195;
-  color: #000;
-}
-
-#copy-address-btn:hover,
-#refresh-balance-btn:hover {
-  background-color: #0fd480;
+.send-btn:hover {
+  opacity: 0.88;
 }
 
 /* =============================================
-   STATUS MESSAGE BOX
+   STATUS MESSAGE
    ============================================= */
 #status-message {
-  margin-top: 12px;
-  padding: 10px 12px;
-  border-radius: 4px;
-  font-size: 13px;
-  line-height: 1.5;
-  word-break: break-all;  /* Break long transaction IDs */
-  display: none;           /* Hidden by default */
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-size: 12px;
+  line-height: 1.6;
+  word-break: break-all;
+  display: none;
 }
 
-/* Green = success */
 #status-message.success {
   display: block;
-  background-color: #d4edda;
-  color: #155724;
-  border: 1px solid #c3e6cb;
+  background-color: #1a2a1a;
+  color: #4ade80;
+  border: 1px solid #2a4a2a;
 }
 
-/* Red = error */
 #status-message.error {
   display: block;
-  background-color: #f8d7da;
-  color: #721c24;
-  border: 1px solid #f5c6cb;
+  background-color: #2a1a1a;
+  color: #f87171;
+  border: 1px solid #4a2a2a;
 }
 
-/* Blue = info / loading */
 #status-message.info {
   display: block;
-  background-color: #d1ecf1;
-  color: #0c5460;
-  border: 1px solid #bee5eb;
+  background-color: #1a1a2a;
+  color: #93c5fd;
+  border: 1px solid #2a2a4a;
 }
 
 /* =============================================
-   RECENT TRANSACTIONS LIST
+   RECENT ACTIVITY SECTION
    ============================================= */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 20px 12px;
+}
+
+.section-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+/* Transaction list */
 #tx-list {
-  list-style: none;   /* Remove default bullet points */
-  padding: 0;
+  list-style: none;
+  padding: 0 20px;
   margin: 0;
 }
 
-/* Each transaction row */
 #tx-list li {
-  padding: 8px 4px;
-  border-bottom: 1px solid #eee;
-  font-size: 13px;
-  color: #444;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #1e1e1e;
 }
 
-/* Remove the bottom border from the very last item */
 #tx-list li:last-child {
   border-bottom: none;
 }
 
-/* The clickable transaction link */
-#tx-list li a {
-  color: #9945FF;
-  text-decoration: none;
-  font-family: monospace;  /* Monospace font looks good for tx IDs */
+/* Left side: icon + tx id */
+.tx-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tx-icon {
+  width: 36px;
+  height: 36px;
+  background-color: #1e1e1e;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.tx-id {
+  font-family: 'Courier New', monospace;
   font-size: 13px;
+  color: #ffffff;
+  text-decoration: none;
+  font-weight: 500;
 }
 
-#tx-list li a:hover {
-  text-decoration: underline;
-  color: #7d37d9;
+.tx-id:hover {
+  color: #aaa;
 }
 
-/* Small grey timestamp shown next to each tx */
-#tx-list li .tx-time {
-  color: #999;
+/* Right side: timestamp */
+.tx-time {
   font-size: 11px;
-  margin-left: 8px;
+  color: #444;
+  white-space: nowrap;
+  text-align: right;
 }
 
-/* Shown while transactions are loading or if there are none */
-#tx-list li.tx-loading,
-#tx-list li.tx-empty {
-  color: #999;
+/* Empty / loading state */
+#tx-list li.tx-empty,
+#tx-list li.tx-loading {
+  justify-content: center;
+  color: #444;
+  font-size: 13px;
   font-style: italic;
-  text-align: center;
-  padding: 12px 4px;
+  padding: 20px 0;
+  border-bottom: none;
 }

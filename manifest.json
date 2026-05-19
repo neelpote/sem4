@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Simple Solana Wallet",
+  "name": "Xenon Wallet",
   "version": "1.0.0",
-  "description": "A basic Solana Devnet wallet for beginners",
+  "description": "A clean Solana Devnet wallet",
   "permissions": [
     "storage"
   ],
