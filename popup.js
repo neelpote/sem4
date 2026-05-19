@@ -1,92 +1,86 @@
 // ============================================================
-// SIMPLE SOLANA WALLET - popup.js
+// XENON WALLET - popup.js
 // ============================================================
-// This single file handles everything:
-//   1. Loading an existing wallet from Chrome storage
-//   2. Generating a brand new wallet
-//   3. Fetching the SOL balance from Devnet
-//   4. Sending a SOL transfer transaction
-//
-// We use the @solana/web3.js library loaded via CDN in popup.html
-// It is available globally as window.solanaWeb3
+// Handles everything:
+//   1. Multiple accounts — create, switch, stored in chrome.storage
+//   2. Balance fetching from Solana Devnet
+//   3. Sending SOL transactions
+//   4. Recent transaction history
+//   5. Address book (save / delete contacts)
 // ============================================================
 
 
 // ============================================================
-// SETUP: Get the Solana library and create a connection
+// GLOBAL SETUP
 // ============================================================
 
-// The local solana-web3.min.js file exposes the library as window.solanaWeb3
-// We just use it directly via window.solanaWeb3 — no need to redeclare it
-
-// Solana Devnet RPC endpoint
-// This is a free public URL for testing - NOT for real money
+// Solana Devnet RPC — free public endpoint for testing
 const DEVNET_RPC_URL = 'https://api.devnet.solana.com';
 
-// Create a Connection object - this is how we talk to the blockchain
-// 'confirmed' means we wait until the network has confirmed our transactions
+// Connection object — this is how we talk to the Solana blockchain
 const connection = new window.solanaWeb3.Connection(DEVNET_RPC_URL, 'confirmed');
 
-// This variable will hold the user's Keypair (public + secret key)
-// It starts as null until we load or generate a wallet
+// The currently active keypair (the wallet we're looking at right now)
+// This gets set whenever we load or switch accounts
 let userKeypair = null;
+
+// The index of the active account inside the allAccounts array
+// e.g. 0 = first account, 1 = second account, etc.
+let activeAccountIndex = 0;
 
 
 // ============================================================
-// STEP 1: INITIALIZATION
+// INITIALIZATION
 // Runs automatically when the popup HTML finishes loading
 // ============================================================
 document.addEventListener('DOMContentLoaded', async function () {
-  console.log('Popup opened. Checking Chrome storage for existing wallet...');
+  console.log('Popup opened.');
 
-  // Try to load a saved wallet from Chrome's local storage
+  // Check storage for existing accounts and load the active one
   await loadWalletFromStorage();
 
-  // Wire up all the buttons to their handler functions
+  // Wire up all button click handlers
   setupButtonListeners();
 });
 
 
 // ============================================================
-// STEP 2: LOAD WALLET FROM CHROME STORAGE
+// LOAD WALLET FROM STORAGE
 // ============================================================
-// Chrome extensions can save data using chrome.storage.local
-// We save the secret key as an array of numbers when we create a wallet
-// Here we try to read it back
+// We now store ALL accounts as an array called 'allAccounts'
+// Each item looks like: { name: "Account 1", secretKey: [12, 45, 200, ...] }
+// We also store 'activeAccountIndex' to remember which one was last selected
 async function loadWalletFromStorage() {
-  // chrome.storage.local.get is callback-based (not promise-based)
-  // We pass it the key name we want to look up
-  chrome.storage.local.get(['secretKey'], function (result) {
 
-    if (result.secretKey) {
-      // Found a saved secret key!
-      console.log('Wallet found in storage. Loading it...');
+  chrome.storage.local.get(['allAccounts', 'activeAccountIndex'], function (result) {
 
-      // The secret key was saved as a plain array of numbers like [12, 45, 200, ...]
-      // We need to convert it back to a Uint8Array (typed array of bytes)
-      const secretKeyBytes = new Uint8Array(result.secretKey);
+    // Check if we have any accounts saved at all
+    if (result.allAccounts && result.allAccounts.length > 0) {
 
-      // Recreate the full Keypair from just the secret key bytes
-      // The public key is mathematically derived from the secret key
-      userKeypair = window.solanaWeb3.Keypair.fromSecretKey(secretKeyBytes);
+      // We have accounts! Figure out which one was active last time
+      // If activeAccountIndex was never saved, default to 0 (first account)
+      activeAccountIndex = result.activeAccountIndex || 0;
 
-      console.log('Wallet loaded. Public key:', userKeypair.publicKey.toString());
+      // Safety check: if the saved index is out of range, reset to 0
+      if (activeAccountIndex >= result.allAccounts.length) {
+        activeAccountIndex = 0;
+      }
 
-      // Show the main wallet UI
+      // Load the active account's keypair into memory
+      loadKeypairAtIndex(result.allAccounts, activeAccountIndex);
+
+      // Show the main wallet screen
       showWalletScreen();
 
-      // Automatically fetch the balance when the wallet opens
+      // Load data for the active account
       refreshBalance();
-
-      // Load the 5 most recent transactions
       loadRecentTransactions();
-
-      // Load saved contacts into the dropdown and contacts list
       loadContacts();
+      loadAccountsList();
 
     } else {
-      // No wallet found in storage - show the "create wallet" screen
-      console.log('No wallet in storage. Showing onboarding screen.');
+      // No accounts found at all — show the onboarding screen
+      console.log('No accounts found. Showing onboarding.');
       showOnboardingScreen();
     }
 
@@ -95,80 +89,256 @@ async function loadWalletFromStorage() {
 
 
 // ============================================================
-// STEP 3: GENERATE A NEW WALLET
+// LOAD KEYPAIR AT INDEX
 // ============================================================
-// Called when the user clicks "Generate New Wallet"
+// Given the full allAccounts array and an index number,
+// this function rebuilds the Keypair object for that account
+// and sets it as the active userKeypair
+function loadKeypairAtIndex(allAccounts, index) {
+
+  // Get the account object at the given index
+  const account = allAccounts[index];
+
+  // The secret key was saved as a plain array of numbers
+  // Convert it back to a Uint8Array so Solana can use it
+  const secretKeyBytes = new Uint8Array(account.secretKey);
+
+  // Rebuild the full Keypair from the secret key bytes
+  userKeypair = window.solanaWeb3.Keypair.fromSecretKey(secretKeyBytes);
+
+  console.log('Loaded account:', account.name, '| Public key:', userKeypair.publicKey.toString());
+}
+
+
+// ============================================================
+// CREATE FIRST WALLET (Onboarding button)
+// ============================================================
+// Called when the user clicks "Create Wallet" on the onboarding screen
+// This creates the very first account
 async function generateNewWallet() {
   try {
-    console.log('Generating a new Solana keypair...');
+    console.log('Creating first wallet...');
 
-    // window.solanaWeb3.Keypair.generate() creates a random public/private key pair
-    // The private key (secretKey) is 64 bytes
-    // The public key (publicKey) is 32 bytes and is the wallet address
-    userKeypair = window.solanaWeb3.Keypair.generate();
+    // Generate a brand new random keypair
+    const newKeypair = window.solanaWeb3.Keypair.generate();
 
-    console.log('New wallet created! Public key:', userKeypair.publicKey.toString());
+    // Build the account object to save
+    // secretKey must be a plain array (not Uint8Array) for chrome.storage
+    const newAccount = {
+      name: 'Account 1',
+      secretKey: Array.from(newKeypair.secretKey)
+    };
 
-    // Convert the Uint8Array secret key to a plain JavaScript array
-    // We do this because Chrome storage works best with plain JSON-serializable values
-    const secretKeyAsArray = Array.from(userKeypair.secretKey);
+    // Save as an array with one item, and set active index to 0
+    chrome.storage.local.set({
+      allAccounts: [newAccount],
+      activeAccountIndex: 0
+    }, function () {
+      console.log('First wallet saved.');
 
-    // Save the secret key array to Chrome's local storage
-    // This persists even when the popup is closed
-    chrome.storage.local.set({ secretKey: secretKeyAsArray }, function () {
-      console.log('Secret key saved to Chrome storage.');
+      // Set the global keypair variable
+      userKeypair = newKeypair;
+      activeAccountIndex = 0;
 
-      // Now show the main wallet screen
+      // Show the main wallet screen
       showWalletScreen();
-
-      // Fetch balance (will be 0 for a brand new wallet)
       refreshBalance();
-
-      // Load recent transactions (will be empty for a new wallet)
       loadRecentTransactions();
-
-      // Load contacts (will be empty for a new wallet)
       loadContacts();
+      loadAccountsList();
     });
 
   } catch (error) {
-    console.error('Failed to generate wallet:', error);
-    showStatus('Error generating wallet: ' + error.message, 'error');
+    console.error('Error creating wallet:', error);
+    showStatus('Error creating wallet: ' + error.message, 'error');
   }
 }
 
 
 // ============================================================
-// STEP 4: REFRESH BALANCE
+// ADD A NEW ACCOUNT
 // ============================================================
-// Fetches the current SOL balance for our wallet address from Devnet
+// Called when the user clicks "+ Add Account" in the accounts panel
+// Creates a new keypair and adds it to the existing allAccounts array
+function addNewAccount() {
+
+  // First, read the existing accounts from storage
+  chrome.storage.local.get(['allAccounts'], function (result) {
+
+    // Get the existing list, or start fresh if somehow empty
+    const allAccounts = result.allAccounts || [];
+
+    // Generate a brand new random keypair for the new account
+    const newKeypair = window.solanaWeb3.Keypair.generate();
+
+    // Give it a name like "Account 2", "Account 3", etc.
+    // We use allAccounts.length + 1 because the new one hasn't been added yet
+    const newAccountName = 'Account ' + (allAccounts.length + 1);
+
+    // Build the account object
+    const newAccount = {
+      name: newAccountName,
+      secretKey: Array.from(newKeypair.secretKey)
+    };
+
+    // Push the new account onto the array
+    allAccounts.push(newAccount);
+
+    // The new account's index is the last position in the array
+    const newIndex = allAccounts.length - 1;
+
+    // Save the updated array and set the new account as active
+    chrome.storage.local.set({
+      allAccounts: allAccounts,
+      activeAccountIndex: newIndex
+    }, function () {
+      console.log('New account added:', newAccountName);
+
+      // Update the global variables
+      userKeypair = newKeypair;
+      activeAccountIndex = newIndex;
+
+      // Refresh the UI to show the new account's data
+      showWalletScreen();
+      refreshBalance();
+      loadRecentTransactions();
+      loadAccountsList();
+
+      // Go back to the main screen so the user can see their new account
+      showPanel('main-content');
+    });
+
+  });
+}
+
+
+// ============================================================
+// SWITCH TO A DIFFERENT ACCOUNT
+// ============================================================
+// Called when the user clicks on an account in the accounts list
+// index = the position of the account they want to switch to
+function switchToAccount(index) {
+
+  chrome.storage.local.get(['allAccounts'], function (result) {
+
+    const allAccounts = result.allAccounts || [];
+
+    // Make sure the index is valid
+    if (index < 0 || index >= allAccounts.length) {
+      console.error('Invalid account index:', index);
+      return;
+    }
+
+    // Save the new active index to storage so it persists after popup closes
+    chrome.storage.local.set({ activeAccountIndex: index }, function () {
+
+      // Update the global variables
+      activeAccountIndex = index;
+      loadKeypairAtIndex(allAccounts, index);
+
+      // Refresh the UI with the new account's data
+      showWalletScreen();
+      refreshBalance();
+      loadRecentTransactions();
+      loadAccountsList();
+
+      // Close the accounts panel and go back to main
+      showPanel('main-content');
+
+      console.log('Switched to account index:', index);
+    });
+
+  });
+}
+
+
+// ============================================================
+// LOAD ACCOUNTS LIST (in the Accounts panel)
+// ============================================================
+// Reads all accounts from storage and builds the list UI
+// Shows which one is currently active with a checkmark
+function loadAccountsList() {
+
+  chrome.storage.local.get(['allAccounts', 'activeAccountIndex'], function (result) {
+
+    const allAccounts = result.allAccounts || [];
+    const currentIndex = result.activeAccountIndex || 0;
+
+    // Update the topbar to show the active account name
+    if (allAccounts[currentIndex]) {
+      document.getElementById('active-account-name').textContent = allAccounts[currentIndex].name;
+    }
+
+    // Get the <ul> element in the accounts panel
+    const accountsList = document.getElementById('accounts-list');
+    accountsList.innerHTML = '';
+
+    // Build a row for each account
+    for (let i = 0; i < allAccounts.length; i++) {
+
+      // Rebuild the keypair just to get the public key for display
+      const secretKeyBytes = new Uint8Array(allAccounts[i].secretKey);
+      const keypair = window.solanaWeb3.Keypair.fromSecretKey(secretKeyBytes);
+      const fullAddress = keypair.publicKey.toString();
+
+      // Shorten the address for display
+      const shortAddr = fullAddress.slice(0, 6) + '...' + fullAddress.slice(-4);
+
+      // Is this the currently active account?
+      const isActive = (i === currentIndex);
+
+      const li = document.createElement('li');
+      li.className = 'account-row' + (isActive ? ' account-row-active' : '');
+
+      li.innerHTML =
+        '<div class="account-info">' +
+          '<span class="account-name">' + allAccounts[i].name + '</span>' +
+          '<span class="account-addr">' + shortAddr + '</span>' +
+        '</div>' +
+        // Show a checkmark if this is the active account, otherwise a "switch" button
+        (isActive
+          ? '<span class="account-active-badge">&#10003; Active</span>'
+          : '<button class="account-switch-btn" data-index="' + i + '">Switch</button>'
+        );
+
+      accountsList.appendChild(li);
+    }
+
+    // Wire up the Switch buttons — we do this after building the list
+    // because the buttons didn't exist before
+    const switchButtons = document.querySelectorAll('.account-switch-btn');
+    for (let i = 0; i < switchButtons.length; i++) {
+      switchButtons[i].addEventListener('click', function () {
+        const indexToSwitchTo = parseInt(this.getAttribute('data-index'));
+        switchToAccount(indexToSwitchTo);
+      });
+    }
+
+  });
+}
+
+
+// ============================================================
+// REFRESH BALANCE
+// ============================================================
 async function refreshBalance() {
   try {
-    // Make sure we have a wallet loaded before trying to check balance
     if (!userKeypair) {
       showStatus('No wallet loaded.', 'error');
       return;
     }
 
-    showStatus('Fetching balance from Devnet...', 'info');
-    console.log('Fetching balance for:', userKeypair.publicKey.toString());
+    showStatus('Fetching balance...', 'info');
 
-    // connection.getBalance() takes a PublicKey and returns the balance in LAMPORTS
-    // Lamports are the smallest unit of SOL, like cents are to dollars
-    // 1 SOL = 1,000,000,000 lamports (one billion)
+    // getBalance() returns the balance in lamports (smallest unit of SOL)
+    // 1 SOL = 1,000,000,000 lamports
     const balanceInLamports = await connection.getBalance(userKeypair.publicKey);
 
-    // Convert lamports to SOL by dividing by 1 billion
-    // Example: 500,000,000 lamports / 1,000,000,000 = 0.5 SOL
+    // Divide by 1 billion to convert lamports to SOL
     const balanceInSOL = balanceInLamports / 1000000000;
 
-    console.log('Balance:', balanceInLamports, 'lamports =', balanceInSOL, 'SOL');
-
-    // Update the balance display in the UI
-    // toFixed(4) shows 4 decimal places, e.g. "1.2345"
     document.getElementById('balance-amount').textContent = balanceInSOL.toFixed(4);
 
-    // Show a brief success message then hide it
     showStatus('Balance updated!', 'success');
     setTimeout(function () {
       document.getElementById('status-message').style.display = 'none';
@@ -182,16 +352,13 @@ async function refreshBalance() {
 
 
 // ============================================================
-// STEP 5: SEND SOL
+// SEND SOL
 // ============================================================
-// Reads the form inputs, builds a transaction, signs it, and sends it
 async function sendSOL() {
   try {
-    // --- Read inputs from the form ---
     const recipientAddressStr = document.getElementById('recipient-address').value.trim();
     const amountStr = document.getElementById('send-amount').value.trim();
 
-    // --- Basic validation ---
     if (!recipientAddressStr) {
       showStatus('Please enter a recipient address.', 'error');
       return;
@@ -204,67 +371,48 @@ async function sendSOL() {
 
     const amountInSOL = parseFloat(amountStr);
 
-    // Convert SOL to lamports (multiply by 1 billion)
-    // Math.floor() removes any decimal remainder since lamports must be whole numbers
+    // Multiply by 1 billion to convert SOL to lamports
+    // Math.floor removes any decimal since lamports must be whole numbers
     const amountInLamports = Math.floor(amountInSOL * 1000000000);
 
-    console.log('Preparing to send', amountInSOL, 'SOL (', amountInLamports, 'lamports)');
-    console.log('Recipient:', recipientAddressStr);
-
-    // --- Validate the recipient address ---
-    // new window.solanaWeb3.PublicKey() will throw an error if the string is not a valid address
+    // Validate the recipient address — PublicKey() throws if it's invalid
     let recipientPublicKey;
     try {
       recipientPublicKey = new window.solanaWeb3.PublicKey(recipientAddressStr);
     } catch (err) {
-      // The address string was not a valid Solana public key
       showStatus('Invalid recipient address. Please double-check it.', 'error');
       return;
     }
 
     showStatus('Building transaction...', 'info');
 
-    // --- Build the transaction ---
-    // A Transaction is a container that holds one or more instructions
+    // Build the transaction with a SystemProgram transfer instruction
     const transaction = new window.solanaWeb3.Transaction();
+    transaction.add(
+      window.solanaWeb3.SystemProgram.transfer({
+        fromPubkey: userKeypair.publicKey,
+        toPubkey: recipientPublicKey,
+        lamports: amountInLamports
+      })
+    );
 
-    // SystemProgram.transfer() creates an instruction that moves SOL
-    // from one account to another. This is a built-in Solana program,
-    // no custom smart contract needed.
-    const transferInstruction = window.solanaWeb3.SystemProgram.transfer({
-      fromPubkey: userKeypair.publicKey,  // Our wallet (the sender)
-      toPubkey: recipientPublicKey,        // The recipient's wallet
-      lamports: amountInLamports           // How much to send (in lamports)
-    });
+    showStatus('Sending... please wait.', 'info');
 
-    // Add the transfer instruction to our transaction
-    transaction.add(transferInstruction);
-
-    showStatus('Sending transaction... please wait.', 'info');
-
-    // --- Sign and send the transaction ---
-    // sendAndConfirmTransaction does three things:
-    //   1. Signs the transaction with our keypair (proves we own the wallet)
-    //   2. Sends it to the Solana network
-    //   3. Waits until the network confirms it was processed
-    // It returns a "signature" which is the unique transaction ID
+    // Sign and send — this waits for confirmation before returning
     const txSignature = await window.solanaWeb3.sendAndConfirmTransaction(
       connection,
       transaction,
-      [userKeypair]  // Array of signers - just us in this case
+      [userKeypair]
     );
 
     console.log('Transaction confirmed! Signature:', txSignature);
+    showStatus('Sent! TX: ' + txSignature, 'success');
 
-    // Show the transaction ID to the user
-    // They can look it up on https://explorer.solana.com/?cluster=devnet
-    showStatus('Success! Transaction ID:\n' + txSignature, 'success');
-
-    // Clear the form inputs
+    // Clear the form
     document.getElementById('recipient-address').value = '';
     document.getElementById('send-amount').value = '';
 
-    // Wait 2 seconds then refresh the balance and transaction list
+    // Refresh balance and transactions after 2 seconds
     setTimeout(function () {
       refreshBalance();
       loadRecentTransactions();
@@ -278,73 +426,43 @@ async function sendSOL() {
 
 
 // ============================================================
-// STEP 6: LOAD RECENT TRANSACTIONS
+// LOAD RECENT TRANSACTIONS
 // ============================================================
-// Fetches the 5 most recent transactions for our wallet address
-// and displays them as clickable links in the #tx-list element
 async function loadRecentTransactions() {
-  // Get the <ul> element where we'll put the transaction list items
   const txList = document.getElementById('tx-list');
 
   try {
-    console.log('Fetching recent transactions...');
-
-    // Show a loading message while we wait for the network
     txList.innerHTML = '<li class="tx-loading">Loading transactions...</li>';
 
-    // getSignaturesForAddress() asks Solana for a list of recent transactions
-    // that involve our wallet address.
-    // The { limit: 5 } option means "only give me the 5 most recent ones"
-    // Each item in the returned array has a .signature (the transaction ID)
-    // and a .blockTime (unix timestamp of when it happened)
+    // getSignaturesForAddress returns the last N transactions for this address
     const signatures = await connection.getSignaturesForAddress(
       userKeypair.publicKey,
       { limit: 5 }
     );
 
-    console.log('Got', signatures.length, 'transactions');
-
-    // If there are no transactions yet, show a friendly message
     if (signatures.length === 0) {
       txList.innerHTML = '<li class="tx-empty">No transactions yet.</li>';
       return;
     }
 
-    // Clear the loading message so we can fill in the real data
     txList.innerHTML = '';
 
-    // Loop through each transaction in the array
-    // signatures[0] is the most recent, signatures[4] is the oldest
     for (let i = 0; i < signatures.length; i++) {
-
-      // The full transaction signature looks like:
-      // "5KtPn1LGuxhFiwjxqUBpnzFLJBPbRBsHqNrTJBkS7dKvXyz..."
-      // It's 88 characters long — too long to show in full.
-      // So we show the first 5 chars + "..." + last 5 chars
-      // Example: "5KtPn...7dKvX"
       const fullSignature = signatures[i].signature;
+
+      // Show first 5 + last 5 chars to keep it short
       const shortSignature = fullSignature.slice(0, 5) + '...' + fullSignature.slice(-5);
 
-      // blockTime is a Unix timestamp (seconds since Jan 1 1970)
-      // We convert it to a readable date string
-      // If blockTime is null (rare), we show "Unknown time"
+      // blockTime is seconds since epoch — multiply by 1000 for JS Date
       let timeString = 'Unknown time';
       if (signatures[i].blockTime) {
-        // Multiply by 1000 because JavaScript Date uses milliseconds
-        const date = new Date(signatures[i].blockTime * 1000);
-
-        // toLocaleString() gives us something like "5/19/2026, 3:45:00 PM"
-        timeString = date.toLocaleString();
+        timeString = new Date(signatures[i].blockTime * 1000).toLocaleString();
       }
 
-      // Build the Solana Explorer URL for this transaction
-      // Adding ?cluster=devnet tells Explorer to look on Devnet, not Mainnet
+      // Link to Solana Explorer on Devnet
       const explorerUrl = 'https://explorer.solana.com/tx/' + fullSignature + '?cluster=devnet';
 
-      // Create a new <li> element for this transaction
       const listItem = document.createElement('li');
-
-      // Build the row: left side has icon + link, right side has timestamp
       listItem.innerHTML =
         '<div class="tx-left">' +
           '<div class="tx-icon">&#8599;</div>' +
@@ -352,66 +470,48 @@ async function loadRecentTransactions() {
         '</div>' +
         '<span class="tx-time">' + timeString + '</span>';
 
-      // Add this list item to the <ul>
       txList.appendChild(listItem);
     }
 
   } catch (error) {
     console.error('Error fetching transactions:', error);
-    // Show the error inside the list so the user knows something went wrong
     txList.innerHTML = '<li class="tx-empty">Could not load transactions.</li>';
   }
 }
 
 
 // ============================================================
-// STEP 7: LOAD CONTACTS
+// LOAD CONTACTS
 // ============================================================
-// Reads saved contacts from Chrome storage and:
-//   1. Populates the dropdown in the Send panel
-//   2. Populates the contacts list in the Address Book panel
 function loadContacts() {
-  // Ask Chrome storage for the 'savedContacts' key
-  // If it doesn't exist yet, default to an empty array []
   chrome.storage.local.get(['savedContacts'], function (result) {
 
-    // If nothing is saved yet, use an empty array
     const contacts = result.savedContacts || [];
 
-    console.log('Loaded', contacts.length, 'contacts from storage');
-
-    // --- Update the dropdown in the Send panel ---
+    // Rebuild the dropdown in the Send panel
     const dropdown = document.getElementById('contact-dropdown');
-
-    // Clear all existing options first, then add the default placeholder back
     dropdown.innerHTML = '<option value="">Select a saved contact...</option>';
 
-    // Loop through each saved contact and add it as an <option>
-    // The option text shows the name, the value holds the address
-    // So when the user picks "Alice", the value is Alice's public key
     for (let i = 0; i < contacts.length; i++) {
       const option = document.createElement('option');
-      option.textContent = contacts[i].name;   // What the user sees
-      option.value = contacts[i].address;       // The actual wallet address
+      option.textContent = contacts[i].name;
+      option.value = contacts[i].address;
       dropdown.appendChild(option);
     }
 
-    // --- Update the contacts list in the Address Book panel ---
+    // Rebuild the contacts list in the Address Book panel
     const contactsList = document.getElementById('contacts-list');
     contactsList.innerHTML = '';
 
     if (contacts.length === 0) {
-      // No contacts saved yet — show a placeholder message
       contactsList.innerHTML = '<li class="contacts-empty">No contacts saved yet.</li>';
       return;
     }
 
-    // Build a list item for each contact showing their name and shortened address
     for (let i = 0; i < contacts.length; i++) {
       const li = document.createElement('li');
       li.className = 'contact-row';
 
-      // Shorten the address for display: first 6 + ... + last 4 chars
       const shortAddr = contacts[i].address.slice(0, 6) + '...' + contacts[i].address.slice(-4);
 
       li.innerHTML =
@@ -419,20 +519,16 @@ function loadContacts() {
           '<span class="contact-name">' + contacts[i].name + '</span>' +
           '<span class="contact-addr">' + shortAddr + '</span>' +
         '</div>' +
-        // Delete button — stores the index so we know which contact to remove
         '<button class="contact-delete-btn" data-index="' + i + '">&#10005;</button>';
 
       contactsList.appendChild(li);
     }
 
-    // Add click listeners to all the delete buttons we just created
-    // We do this here because the buttons didn't exist before this function ran
+    // Wire up delete buttons
     const deleteButtons = document.querySelectorAll('.contact-delete-btn');
     for (let i = 0; i < deleteButtons.length; i++) {
       deleteButtons[i].addEventListener('click', function () {
-        // data-index tells us which contact in the array to remove
-        const indexToDelete = parseInt(this.getAttribute('data-index'));
-        deleteContact(indexToDelete);
+        deleteContact(parseInt(this.getAttribute('data-index')));
       });
     }
 
@@ -441,82 +537,48 @@ function loadContacts() {
 
 
 // ============================================================
-// STEP 8: SAVE A CONTACT
+// SAVE A CONTACT
 // ============================================================
-// Reads the name + address inputs, validates them, and saves to storage
 function saveContact() {
-  // Read the input values and trim whitespace
   const name = document.getElementById('contact-name').value.trim();
   const address = document.getElementById('contact-address').value.trim();
 
-  // Basic validation — both fields must be filled in
-  if (!name) {
-    alert('Please enter a contact name.');
-    return;
-  }
+  if (!name) { alert('Please enter a contact name.'); return; }
+  if (!address) { alert('Please enter a Solana address.'); return; }
 
-  if (!address) {
-    alert('Please enter a Solana address.');
-    return;
-  }
-
-  // Validate that the address is actually a valid Solana public key
-  // new window.solanaWeb3.PublicKey() throws an error if the string is invalid
+  // Validate the address format
   try {
     new window.solanaWeb3.PublicKey(address);
   } catch (err) {
-    alert('That doesn\'t look like a valid Solana address. Please double-check it.');
+    alert('That doesn\'t look like a valid Solana address.');
     return;
   }
 
-  // Load the existing contacts array from storage first
-  // We need to add to it, not overwrite it
   chrome.storage.local.get(['savedContacts'], function (result) {
-
-    // Get existing contacts, or start with empty array if none saved yet
     const contacts = result.savedContacts || [];
-
-    // Add the new contact object to the array
-    // Each contact is just { name: "Alice", address: "ABC123..." }
     contacts.push({ name: name, address: address });
 
-    // Save the updated array back to Chrome storage
-    // JSON.stringify is NOT needed here — chrome.storage handles objects natively
     chrome.storage.local.set({ savedContacts: contacts }, function () {
-      console.log('Contact saved:', name, address);
-
-      // Clear the input fields
       document.getElementById('contact-name').value = '';
       document.getElementById('contact-address').value = '';
-
-      // Refresh the contacts list and dropdown to show the new contact
       loadContacts();
-
-      // Let the user know it worked
       alert('Contact "' + name + '" saved!');
     });
-
   });
 }
 
 
 // ============================================================
-// STEP 9: DELETE A CONTACT
+// DELETE A CONTACT
 // ============================================================
-// Removes a contact at a given index from the saved array
 function deleteContact(index) {
   chrome.storage.local.get(['savedContacts'], function (result) {
     const contacts = result.savedContacts || [];
 
-    // splice(index, 1) removes 1 item at the given position
-    // e.g. if index is 2, it removes contacts[2]
+    // splice(index, 1) removes the item at that position
     contacts.splice(index, 1);
 
-    // Save the updated array (now one item shorter) back to storage
     chrome.storage.local.set({ savedContacts: contacts }, function () {
-      console.log('Contact deleted at index', index);
-
-      // Refresh the list to reflect the deletion
       loadContacts();
     });
   });
@@ -527,7 +589,7 @@ function deleteContact(index) {
 // UI HELPER: Show the onboarding screen
 // ============================================================
 function showOnboardingScreen() {
-  document.getElementById('onboarding-screen').style.display = 'block';
+  document.getElementById('onboarding-screen').style.display = 'flex';
   document.getElementById('wallet-screen').style.display = 'none';
 }
 
@@ -539,17 +601,31 @@ function showWalletScreen() {
   document.getElementById('onboarding-screen').style.display = 'none';
   document.getElementById('wallet-screen').style.display = 'block';
 
-  // Fill in the wallet address
   if (userKeypair) {
     const fullAddress = userKeypair.publicKey.toString();
-
-    // Put the full address in the hidden input (used for copying)
     document.getElementById('wallet-address').value = fullAddress;
 
-    // Show a shortened version in the visible address bar
-    // e.g. "HnAz4...dQzY" — first 6 chars + ... + last 4 chars
+    // Show shortened address in the pill: first 6 + ... + last 4
     const shortAddress = fullAddress.slice(0, 6) + '...' + fullAddress.slice(-4);
     document.getElementById('wallet-address-short').textContent = shortAddress;
+  }
+}
+
+
+// ============================================================
+// UI HELPER: Show a specific panel, hide all others
+// ============================================================
+// panelId can be: 'main-content', 'send-panel', 'contacts-panel', 'accounts-panel'
+function showPanel(panelId) {
+  // List of all panels that can be shown/hidden
+  const allPanels = ['main-content', 'send-panel', 'contacts-panel', 'accounts-panel'];
+
+  for (let i = 0; i < allPanels.length; i++) {
+    const el = document.getElementById(allPanels[i]);
+    if (el) {
+      // Show the requested panel, hide everything else
+      el.style.display = (allPanels[i] === panelId) ? 'block' : 'none';
+    }
   }
 }
 
@@ -559,17 +635,11 @@ function showWalletScreen() {
 // ============================================================
 function copyAddress() {
   const addressInput = document.getElementById('wallet-address');
-
-  // Select all text in the input field
   addressInput.select();
-  addressInput.setSelectionRange(0, 99999); // For mobile compatibility
-
-  // Copy the selected text to clipboard
+  addressInput.setSelectionRange(0, 99999);
   document.execCommand('copy');
 
-  showStatus('Address copied to clipboard!', 'success');
-
-  // Hide the message after 2 seconds
+  showStatus('Address copied!', 'success');
   setTimeout(function () {
     document.getElementById('status-message').style.display = 'none';
   }, 2000);
@@ -577,19 +647,13 @@ function copyAddress() {
 
 
 // ============================================================
-// UI HELPER: Show a status/feedback message
+// UI HELPER: Show a status message
 // ============================================================
-// message: the text to display
-// type: 'success' (green), 'error' (red), or 'info' (blue)
+// type: 'success', 'error', or 'info'
 function showStatus(message, type) {
   const statusEl = document.getElementById('status-message');
   statusEl.textContent = message;
-
-  // Remove any previous type class and set the new one
-  // The CSS file has styles for .success, .error, and .info
   statusEl.className = type;
-
-  // Make sure it's visible
   statusEl.style.display = 'block';
 }
 
@@ -598,53 +662,60 @@ function showStatus(message, type) {
 // SETUP: Wire up all button click events
 // ============================================================
 function setupButtonListeners() {
-  // "Create Wallet" button on the onboarding screen
+
+  // Onboarding — create first wallet
   document.getElementById('generate-wallet-btn').addEventListener('click', generateNewWallet);
 
-  // "Copy" button next to the wallet address
+  // Copy address pill button
   document.getElementById('copy-address-btn').addEventListener('click', copyAddress);
 
-  // "Refresh" action button
+  // Refresh balance
   document.getElementById('refresh-balance-btn').addEventListener('click', refreshBalance);
 
-  // "Send" action button — shows the send panel
+  // Open Send panel
   document.getElementById('open-send-btn').addEventListener('click', function () {
-    document.getElementById('send-panel').style.display = 'block';
-    document.getElementById('contacts-panel').style.display = 'none';
-    document.getElementById('main-content').style.display = 'none';
+    showPanel('send-panel');
   });
 
-  // "Back" button inside send panel — hides it again
+  // Close Send panel
   document.getElementById('close-send-btn').addEventListener('click', function () {
-    document.getElementById('send-panel').style.display = 'none';
-    document.getElementById('main-content').style.display = 'block';
+    showPanel('main-content');
   });
 
-  // "Send SOL" submit button inside the send panel
+  // Send SOL button
   document.getElementById('send-sol-btn').addEventListener('click', sendSOL);
 
-  // "Contacts" action button — shows the address book panel
-  document.getElementById('open-contacts-btn').addEventListener('click', function () {
-    document.getElementById('contacts-panel').style.display = 'block';
-    document.getElementById('send-panel').style.display = 'none';
-    document.getElementById('main-content').style.display = 'none';
-  });
-
-  // "Back" button inside contacts panel
-  document.getElementById('close-contacts-btn').addEventListener('click', function () {
-    document.getElementById('contacts-panel').style.display = 'none';
-    document.getElementById('main-content').style.display = 'block';
-  });
-
-  // "Save Contact" button inside the address book panel
-  document.getElementById('save-contact-btn').addEventListener('click', saveContact);
-
-  // Contact dropdown — when user picks a contact, auto-fill the recipient address
+  // Contact dropdown auto-fills recipient address
   document.getElementById('contact-dropdown').addEventListener('change', function () {
-    // this.value is the wallet address stored in the selected <option>
-    // If the user picked the placeholder "Select a saved contact...", value is ""
     if (this.value !== '') {
       document.getElementById('recipient-address').value = this.value;
     }
   });
+
+  // Open Contacts panel
+  document.getElementById('open-contacts-btn').addEventListener('click', function () {
+    showPanel('contacts-panel');
+  });
+
+  // Close Contacts panel
+  document.getElementById('close-contacts-btn').addEventListener('click', function () {
+    showPanel('main-content');
+  });
+
+  // Save contact button
+  document.getElementById('save-contact-btn').addEventListener('click', saveContact);
+
+  // Open Accounts panel (clicking the account name in the topbar)
+  document.getElementById('open-accounts-btn').addEventListener('click', function () {
+    loadAccountsList(); // Refresh the list before showing
+    showPanel('accounts-panel');
+  });
+
+  // Close Accounts panel
+  document.getElementById('close-accounts-btn').addEventListener('click', function () {
+    showPanel('main-content');
+  });
+
+  // Add new account button
+  document.getElementById('add-account-btn').addEventListener('click', addNewAccount);
 }

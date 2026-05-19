@@ -569,3 +569,80 @@ select option {
   text-align: center;
   padding: 20px 0;
 }
+
+/* =============================================
+   ACCOUNTS LIST (in Accounts panel)
+   ============================================= */
+#accounts-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* Each account row */
+.account-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #1e1e1e;
+}
+
+.account-row:last-child {
+  border-bottom: none;
+}
+
+/* Highlight the active account row slightly */
+.account-row-active {
+  opacity: 1;
+}
+
+/* Left side: account name + shortened address */
+.account-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.account-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.account-addr {
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  color: #555;
+}
+
+/* Green "Active" badge shown on the current account */
+.account-active-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: #4ade80;
+  background-color: #1a2a1a;
+  border: 1px solid #2a4a2a;
+  padding: 4px 10px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+/* Switch button on inactive accounts */
+.account-switch-btn {
+  background: none;
+  border: 1px solid #2a2a2a;
+  color: #aaa;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  width: auto;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.account-switch-btn:hover {
+  border-color: #555;
+  color: #fff;
+}
