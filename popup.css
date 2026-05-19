@@ -1,0 +1,274 @@
+/* =============================================
+   SIMPLE SOLANA WALLET - STYLESHEET
+   Plain CSS, no frameworks, no tricks.
+   ============================================= */
+
+/* Reset default browser spacing */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Body / popup window size */
+body {
+  width: 400px;
+  min-height: 480px;
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+  background-color: #f0f0f0;
+  padding: 20px;
+}
+
+/* =============================================
+   ONBOARDING SCREEN
+   ============================================= */
+#onboarding-screen {
+  text-align: center;
+  padding: 50px 20px;
+}
+
+#onboarding-screen h2 {
+  font-size: 22px;
+  color: #222;
+  margin-bottom: 12px;
+}
+
+#onboarding-screen p {
+  color: #555;
+  margin-bottom: 30px;
+  line-height: 1.6;
+}
+
+/* =============================================
+   HEADER
+   ============================================= */
+.header {
+  text-align: center;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 2px solid #ccc;
+}
+
+.header h1 {
+  font-size: 18px;
+  color: #222;
+}
+
+/* =============================================
+   SECTION CARDS
+   ============================================= */
+.section {
+  background-color: #ffffff;
+  padding: 14px;
+  margin-bottom: 14px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+.section h3 {
+  font-size: 15px;
+  color: #333;
+  margin-bottom: 12px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 8px;
+}
+
+/* =============================================
+   LABELS
+   ============================================= */
+label {
+  display: block;
+  font-weight: bold;
+  color: #444;
+  margin-bottom: 6px;
+}
+
+/* =============================================
+   INPUT FIELDS
+   ============================================= */
+input[type="text"],
+input[type="number"] {
+  width: 100%;
+  padding: 9px 10px;
+  margin-bottom: 12px;
+  border: 1px solid #bbb;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #333;
+  background-color: #fafafa;
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus {
+  outline: none;
+  border-color: #9945FF;
+  background-color: #fff;
+}
+
+/* Read-only address field */
+input[readonly] {
+  background-color: #f0f0f0;
+  cursor: default;
+  color: #555;
+  font-size: 11px;
+}
+
+/* =============================================
+   ADDRESS ROW (input + copy button side by side)
+   ============================================= */
+.address-container {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.address-container input {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.address-container button {
+  width: auto;
+  padding: 9px 14px;
+  flex-shrink: 0;
+}
+
+/* =============================================
+   BALANCE DISPLAY
+   ============================================= */
+.balance-display {
+  font-size: 30px;
+  font-weight: bold;
+  color: #14F195;   /* Solana green */
+  text-align: center;
+  padding: 18px;
+  background-color: #1a1a2e;  /* Dark background makes green pop */
+  border: 2px solid #333;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  letter-spacing: 1px;
+}
+
+/* =============================================
+   BUTTONS
+   ============================================= */
+button {
+  width: 100%;
+  padding: 11px;
+  background-color: #9945FF;  /* Solana purple */
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: #7d37d9;
+}
+
+button:active {
+  background-color: #6b2ec2;
+}
+
+/* Copy and Refresh buttons use Solana green */
+#copy-address-btn,
+#refresh-balance-btn {
+  background-color: #14F195;
+  color: #000;
+}
+
+#copy-address-btn:hover,
+#refresh-balance-btn:hover {
+  background-color: #0fd480;
+}
+
+/* =============================================
+   STATUS MESSAGE BOX
+   ============================================= */
+#status-message {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 4px;
+  font-size: 13px;
+  line-height: 1.5;
+  word-break: break-all;  /* Break long transaction IDs */
+  display: none;           /* Hidden by default */
+}
+
+/* Green = success */
+#status-message.success {
+  display: block;
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+/* Red = error */
+#status-message.error {
+  display: block;
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+/* Blue = info / loading */
+#status-message.info {
+  display: block;
+  background-color: #d1ecf1;
+  color: #0c5460;
+  border: 1px solid #bee5eb;
+}
+
+/* =============================================
+   RECENT TRANSACTIONS LIST
+   ============================================= */
+#tx-list {
+  list-style: none;   /* Remove default bullet points */
+  padding: 0;
+  margin: 0;
+}
+
+/* Each transaction row */
+#tx-list li {
+  padding: 8px 4px;
+  border-bottom: 1px solid #eee;
+  font-size: 13px;
+  color: #444;
+}
+
+/* Remove the bottom border from the very last item */
+#tx-list li:last-child {
+  border-bottom: none;
+}
+
+/* The clickable transaction link */
+#tx-list li a {
+  color: #9945FF;
+  text-decoration: none;
+  font-family: monospace;  /* Monospace font looks good for tx IDs */
+  font-size: 13px;
+}
+
+#tx-list li a:hover {
+  text-decoration: underline;
+  color: #7d37d9;
+}
+
+/* Small grey timestamp shown next to each tx */
+#tx-list li .tx-time {
+  color: #999;
+  font-size: 11px;
+  margin-left: 8px;
+}
+
+/* Shown while transactions are loading or if there are none */
+#tx-list li.tx-loading,
+#tx-list li.tx-empty {
+  color: #999;
+  font-style: italic;
+  text-align: center;
+  padding: 12px 4px;
+}

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Solana Wallet</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  
+  <!-- =============================================
+       ONBOARDING SCREEN
+       Shows when no wallet exists in storage yet
+       ============================================= -->
+  <div id="onboarding-screen">
+    <h2>Welcome to Solana Wallet</h2>
+    <p>You don't have a wallet yet.<br>Click below to create one!</p>
+    <button id="generate-wallet-btn">Generate New Wallet</button>
+  </div>
+
+  <!-- =============================================
+       MAIN WALLET SCREEN
+       Hidden by default, shown after wallet exists
+       ============================================= -->
+  <div id="wallet-screen" style="display: none;">
+    
+    <!-- Header -->
+    <div class="header">
+      <h1>&#9728; Solana Devnet Wallet</h1>
+    </div>
+
+    <!-- Wallet Address Section -->
+    <div class="section">
+      <label>Your Wallet Address:</label>
+      <div class="address-container">
+        <!-- readonly so user can't accidentally edit it -->
+        <input type="text" id="wallet-address" readonly placeholder="Loading...">
+        <button id="copy-address-btn">Copy</button>
+      </div>
+    </div>
+
+    <!-- Balance Section -->
+    <div class="section">
+      <label>Current Balance:</label>
+      <div class="balance-display">
+        <span id="balance-amount">--</span> SOL
+      </div>
+      <button id="refresh-balance-btn">&#8635; Refresh Balance</button>
+    </div>
+
+    <!-- Send SOL Form -->
+    <div class="section">
+      <h3>Send SOL</h3>
+      
+      <label for="recipient-address">Recipient Public Key:</label>
+      <input 
+        type="text" 
+        id="recipient-address" 
+        placeholder="Paste recipient wallet address here"
+      >
+      
+      <label for="send-amount">Amount (SOL):</label>
+      <input 
+        type="number" 
+        id="send-amount" 
+        placeholder="e.g. 0.01" 
+        step="0.001" 
+        min="0"
+      >
+      
+      <button id="send-sol-btn">&#10148; Send SOL</button>
+      
+      <!-- Status / feedback messages appear here -->
+      <div id="status-message"></div>
+    </div>
+
+    <!-- Recent Transactions Section -->
+    <div class="section">
+      <h3>&#128196; Recent Transactions</h3>
+
+      <!-- This list gets filled in by loadRecentTransactions() in popup.js -->
+      <!-- Each item will be a clickable link to Solana Explorer -->
+      <ul id="tx-list">
+        <li class="tx-loading">Loading transactions...</li>
+      </ul>
+    </div>
+
+  </div>
+
+  <!-- =============================================
+       SOLANA WEB3.JS LIBRARY
+       Loaded from local file (CDN blocked in MV3)
+       ============================================= -->
+  <script src="solana-web3.min.js"></script>
+  
+  <!-- Our wallet logic -->
+  <script src="popup.js"></script>
+
+</body>
+</html>
