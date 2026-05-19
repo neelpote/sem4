@@ -60,7 +60,7 @@
       <input type="text" id="wallet-address" readonly style="position:absolute;opacity:0;pointer-events:none;width:0;">
     </div>
 
-    <!-- Action buttons: Send / Refresh -->
+    <!-- Action buttons: Send / Refresh / Contacts -->
     <div class="actions">
       <div class="action-item" id="open-send-btn">
         <div class="action-icon">
@@ -79,6 +79,16 @@
         </div>
         <span>Refresh</span>
       </div>
+      <div class="action-item" id="open-contacts-btn">
+        <div class="action-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+        </div>
+        <span>Contacts</span>
+      </div>
     </div>
 
     <!-- Send panel (hidden until Send is clicked) -->
@@ -89,12 +99,51 @@
         <span></span>
       </div>
       <div class="send-body">
+
+        <!-- Contact dropdown — selecting a contact auto-fills the address below -->
+        <label>Saved Contacts</label>
+        <select id="contact-dropdown">
+          <option value="">Select a saved contact...</option>
+          <!-- Options are added dynamically by loadContacts() in popup.js -->
+        </select>
+
         <label>Recipient Address</label>
         <input type="text" id="recipient-address" placeholder="Paste wallet address">
         <label>Amount (SOL)</label>
         <input type="number" id="send-amount" placeholder="0.00" step="0.001" min="0">
         <button id="send-sol-btn" class="send-btn">Send SOL</button>
         <div id="status-message"></div>
+      </div>
+    </div>
+
+    <!-- Contacts panel (hidden until Contacts is clicked) -->
+    <div id="contacts-panel" class="send-panel" style="display:none;">
+      <div class="send-panel-header">
+        <button id="close-contacts-btn" class="back-btn">&#8592; Back</button>
+        <span>Address Book</span>
+        <span></span>
+      </div>
+      <div class="send-body">
+
+        <!-- Form to save a new contact -->
+        <label>Contact Name</label>
+        <input type="text" id="contact-name" placeholder="e.g. Alice">
+
+        <label>Solana Address</label>
+        <input type="text" id="contact-address" placeholder="Paste their wallet address">
+
+        <button id="save-contact-btn" class="send-btn">Save Contact</button>
+
+        <!-- Divider -->
+        <div class="contacts-divider">
+          <span>Saved Contacts</span>
+        </div>
+
+        <!-- List of saved contacts — filled by loadContacts() -->
+        <ul id="contacts-list">
+          <li class="contacts-empty">No contacts saved yet.</li>
+        </ul>
+
       </div>
     </div>
 

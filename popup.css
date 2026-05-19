@@ -440,3 +440,132 @@ input::placeholder {
   padding: 20px 0;
   border-bottom: none;
 }
+
+/* =============================================
+   CONTACT DROPDOWN (inside Send panel)
+   ============================================= */
+select {
+  width: 100%;
+  padding: 12px 14px;
+  margin-bottom: 18px;
+  background-color: #1e1e1e;
+  border: 1px solid #2a2a2a;
+  border-radius: 10px;
+  font-size: 14px;
+  color: #ffffff;
+  outline: none;
+  cursor: pointer;
+  /* Remove default arrow on some browsers and use a clean look */
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+}
+
+select:focus {
+  border-color: #555;
+}
+
+/* The dropdown options inherit dark background on most browsers */
+select option {
+  background-color: #1e1e1e;
+  color: #ffffff;
+}
+
+/* =============================================
+   ADDRESS BOOK — CONTACTS LIST
+   ============================================= */
+.contacts-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0 16px;
+}
+
+.contacts-divider span {
+  font-size: 11px;
+  font-weight: 600;
+  color: #444;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  white-space: nowrap;
+}
+
+.contacts-divider::before,
+.contacts-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background-color: #2a2a2a;
+}
+
+/* The contacts <ul> */
+#contacts-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* Each contact row */
+.contact-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid #1e1e1e;
+}
+
+.contact-row:last-child {
+  border-bottom: none;
+}
+
+/* Left side: name + shortened address stacked */
+.contact-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.contact-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.contact-addr {
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  color: #555;
+}
+
+/* Delete button — small X on the right */
+.contact-delete-btn {
+  background: none;
+  border: 1px solid #2a2a2a;
+  color: #555;
+  font-size: 11px;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: border-color 0.15s, color 0.15s;
+  padding: 0;
+}
+
+.contact-delete-btn:hover {
+  border-color: #f87171;
+  color: #f87171;
+}
+
+/* Empty state message */
+.contacts-empty {
+  color: #444;
+  font-size: 13px;
+  font-style: italic;
+  text-align: center;
+  padding: 20px 0;
+}

@@ -81,6 +81,9 @@ async function loadWalletFromStorage() {
       // Load the 5 most recent transactions
       loadRecentTransactions();
 
+      // Load saved contacts into the dropdown and contacts list
+      loadContacts();
+
     } else {
       // No wallet found in storage - show the "create wallet" screen
       console.log('No wallet in storage. Showing onboarding screen.');
@@ -123,6 +126,9 @@ async function generateNewWallet() {
 
       // Load recent transactions (will be empty for a new wallet)
       loadRecentTransactions();
+
+      // Load contacts (will be empty for a new wallet)
+      loadContacts();
     });
 
   } catch (error) {
@@ -359,6 +365,165 @@ async function loadRecentTransactions() {
 
 
 // ============================================================
+// STEP 7: LOAD CONTACTS
+// ============================================================
+// Reads saved contacts from Chrome storage and:
+//   1. Populates the dropdown in the Send panel
+//   2. Populates the contacts list in the Address Book panel
+function loadContacts() {
+  // Ask Chrome storage for the 'savedContacts' key
+  // If it doesn't exist yet, default to an empty array []
+  chrome.storage.local.get(['savedContacts'], function (result) {
+
+    // If nothing is saved yet, use an empty array
+    const contacts = result.savedContacts || [];
+
+    console.log('Loaded', contacts.length, 'contacts from storage');
+
+    // --- Update the dropdown in the Send panel ---
+    const dropdown = document.getElementById('contact-dropdown');
+
+    // Clear all existing options first, then add the default placeholder back
+    dropdown.innerHTML = '<option value="">Select a saved contact...</option>';
+
+    // Loop through each saved contact and add it as an <option>
+    // The option text shows the name, the value holds the address
+    // So when the user picks "Alice", the value is Alice's public key
+    for (let i = 0; i < contacts.length; i++) {
+      const option = document.createElement('option');
+      option.textContent = contacts[i].name;   // What the user sees
+      option.value = contacts[i].address;       // The actual wallet address
+      dropdown.appendChild(option);
+    }
+
+    // --- Update the contacts list in the Address Book panel ---
+    const contactsList = document.getElementById('contacts-list');
+    contactsList.innerHTML = '';
+
+    if (contacts.length === 0) {
+      // No contacts saved yet — show a placeholder message
+      contactsList.innerHTML = '<li class="contacts-empty">No contacts saved yet.</li>';
+      return;
+    }
+
+    // Build a list item for each contact showing their name and shortened address
+    for (let i = 0; i < contacts.length; i++) {
+      const li = document.createElement('li');
+      li.className = 'contact-row';
+
+      // Shorten the address for display: first 6 + ... + last 4 chars
+      const shortAddr = contacts[i].address.slice(0, 6) + '...' + contacts[i].address.slice(-4);
+
+      li.innerHTML =
+        '<div class="contact-info">' +
+          '<span class="contact-name">' + contacts[i].name + '</span>' +
+          '<span class="contact-addr">' + shortAddr + '</span>' +
+        '</div>' +
+        // Delete button — stores the index so we know which contact to remove
+        '<button class="contact-delete-btn" data-index="' + i + '">&#10005;</button>';
+
+      contactsList.appendChild(li);
+    }
+
+    // Add click listeners to all the delete buttons we just created
+    // We do this here because the buttons didn't exist before this function ran
+    const deleteButtons = document.querySelectorAll('.contact-delete-btn');
+    for (let i = 0; i < deleteButtons.length; i++) {
+      deleteButtons[i].addEventListener('click', function () {
+        // data-index tells us which contact in the array to remove
+        const indexToDelete = parseInt(this.getAttribute('data-index'));
+        deleteContact(indexToDelete);
+      });
+    }
+
+  });
+}
+
+
+// ============================================================
+// STEP 8: SAVE A CONTACT
+// ============================================================
+// Reads the name + address inputs, validates them, and saves to storage
+function saveContact() {
+  // Read the input values and trim whitespace
+  const name = document.getElementById('contact-name').value.trim();
+  const address = document.getElementById('contact-address').value.trim();
+
+  // Basic validation — both fields must be filled in
+  if (!name) {
+    alert('Please enter a contact name.');
+    return;
+  }
+
+  if (!address) {
+    alert('Please enter a Solana address.');
+    return;
+  }
+
+  // Validate that the address is actually a valid Solana public key
+  // new window.solanaWeb3.PublicKey() throws an error if the string is invalid
+  try {
+    new window.solanaWeb3.PublicKey(address);
+  } catch (err) {
+    alert('That doesn\'t look like a valid Solana address. Please double-check it.');
+    return;
+  }
+
+  // Load the existing contacts array from storage first
+  // We need to add to it, not overwrite it
+  chrome.storage.local.get(['savedContacts'], function (result) {
+
+    // Get existing contacts, or start with empty array if none saved yet
+    const contacts = result.savedContacts || [];
+
+    // Add the new contact object to the array
+    // Each contact is just { name: "Alice", address: "ABC123..." }
+    contacts.push({ name: name, address: address });
+
+    // Save the updated array back to Chrome storage
+    // JSON.stringify is NOT needed here — chrome.storage handles objects natively
+    chrome.storage.local.set({ savedContacts: contacts }, function () {
+      console.log('Contact saved:', name, address);
+
+      // Clear the input fields
+      document.getElementById('contact-name').value = '';
+      document.getElementById('contact-address').value = '';
+
+      // Refresh the contacts list and dropdown to show the new contact
+      loadContacts();
+
+      // Let the user know it worked
+      alert('Contact "' + name + '" saved!');
+    });
+
+  });
+}
+
+
+// ============================================================
+// STEP 9: DELETE A CONTACT
+// ============================================================
+// Removes a contact at a given index from the saved array
+function deleteContact(index) {
+  chrome.storage.local.get(['savedContacts'], function (result) {
+    const contacts = result.savedContacts || [];
+
+    // splice(index, 1) removes 1 item at the given position
+    // e.g. if index is 2, it removes contacts[2]
+    contacts.splice(index, 1);
+
+    // Save the updated array (now one item shorter) back to storage
+    chrome.storage.local.set({ savedContacts: contacts }, function () {
+      console.log('Contact deleted at index', index);
+
+      // Refresh the list to reflect the deletion
+      loadContacts();
+    });
+  });
+}
+
+
+// ============================================================
 // UI HELPER: Show the onboarding screen
 // ============================================================
 function showOnboardingScreen() {
@@ -445,6 +610,7 @@ function setupButtonListeners() {
   // "Send" action button — shows the send panel
   document.getElementById('open-send-btn').addEventListener('click', function () {
     document.getElementById('send-panel').style.display = 'block';
+    document.getElementById('contacts-panel').style.display = 'none';
     document.getElementById('main-content').style.display = 'none';
   });
 
@@ -456,4 +622,29 @@ function setupButtonListeners() {
 
   // "Send SOL" submit button inside the send panel
   document.getElementById('send-sol-btn').addEventListener('click', sendSOL);
+
+  // "Contacts" action button — shows the address book panel
+  document.getElementById('open-contacts-btn').addEventListener('click', function () {
+    document.getElementById('contacts-panel').style.display = 'block';
+    document.getElementById('send-panel').style.display = 'none';
+    document.getElementById('main-content').style.display = 'none';
+  });
+
+  // "Back" button inside contacts panel
+  document.getElementById('close-contacts-btn').addEventListener('click', function () {
+    document.getElementById('contacts-panel').style.display = 'none';
+    document.getElementById('main-content').style.display = 'block';
+  });
+
+  // "Save Contact" button inside the address book panel
+  document.getElementById('save-contact-btn').addEventListener('click', saveContact);
+
+  // Contact dropdown — when user picks a contact, auto-fill the recipient address
+  document.getElementById('contact-dropdown').addEventListener('change', function () {
+    // this.value is the wallet address stored in the selected <option>
+    // If the user picked the placeholder "Select a saved contact...", value is ""
+    if (this.value !== '') {
+      document.getElementById('recipient-address').value = this.value;
+    }
+  });
 }
