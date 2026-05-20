@@ -4,7 +4,8 @@
   "version": "1.0.0",
   "description": "A clean Solana Devnet wallet",
   "permissions": [
-    "storage"
+    "storage",
+    "clipboardWrite"
   ],
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'"

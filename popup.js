@@ -634,15 +634,23 @@ function showPanel(panelId) {
 // UI HELPER: Copy wallet address to clipboard
 // ============================================================
 function copyAddress() {
-  const addressInput = document.getElementById('wallet-address');
-  addressInput.select();
-  addressInput.setSelectionRange(0, 99999);
-  document.execCommand('copy');
+  // Get the full address from the hidden input field
+  const fullAddress = document.getElementById('wallet-address').value;
 
-  showStatus('Address copied!', 'success');
-  setTimeout(function () {
-    document.getElementById('status-message').style.display = 'none';
-  }, 2000);
+  // navigator.clipboard.writeText() is the modern way to copy text
+  // It returns a Promise, so we use .then() for success and .catch() for errors
+  navigator.clipboard.writeText(fullAddress).then(function () {
+    // Copy worked!
+    showStatus('Address copied!', 'success');
+    setTimeout(function () {
+      document.getElementById('status-message').style.display = 'none';
+    }, 2000);
+
+  }).catch(function (err) {
+    // Copy failed — show the error
+    console.error('Copy failed:', err);
+    showStatus('Could not copy address.', 'error');
+  });
 }
 
 
