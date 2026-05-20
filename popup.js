@@ -77,6 +77,7 @@ async function loadWalletFromStorage() {
       loadRecentTransactions();
       loadContacts();
       loadAccountsList();
+      fetchSolPrice();
 
     } else {
       // No accounts found at all — show the onboarding screen
@@ -146,6 +147,7 @@ async function generateNewWallet() {
       loadRecentTransactions();
       loadContacts();
       loadAccountsList();
+      fetchSolPrice();
     });
 
   } catch (error) {
@@ -315,6 +317,43 @@ function loadAccountsList() {
     }
 
   });
+}
+
+
+// ============================================================
+// FETCH SOL PRICE FROM LOCAL PRICE SERVER
+// ============================================================
+// Our price server runs at localhost:3000 and caches the
+// CoinGecko price every 5 minutes. We call it here instead
+// of calling CoinGecko directly to avoid rate limits.
+async function fetchSolPrice() {
+  try {
+    // Call our local price server endpoint
+    const response = await fetch('http://localhost:3000/api/prices');
+
+    // If the server responded but with an error status, throw
+    if (!response.ok) {
+      throw new Error('Server returned status ' + response.status);
+    }
+
+    // Parse the JSON response
+    // It looks like: { usd: 84.12, inr: 8145.44, lastUpdated: "..." }
+    const data = await response.json();
+
+    // Format the price display string
+    // e.g. "1 SOL = $84.12 · ₹8,145"
+    const usd = data.usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const inr = data.inr.toLocaleString('en-IN', { maximumFractionDigits: 0 });
+
+    document.getElementById('sol-price-display').textContent = '1 SOL = $' + usd + ' · ₹' + inr;
+
+    console.log('Price loaded from server:', data);
+
+  } catch (error) {
+    // If the server isn't running or there's a network error, show a fallback
+    console.error('Could not fetch price:', error.message);
+    document.getElementById('sol-price-display').textContent = 'Price unavailable (start price server)';
+  }
 }
 
 
