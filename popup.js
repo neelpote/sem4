@@ -352,6 +352,111 @@ async function refreshBalance() {
 
 
 // ============================================================
+// ESTIMATE TRANSACTION FEE
+// ============================================================
+// Builds the exact transaction the user wants to send,
+// asks the network how much it will cost, and shows it
+// in the fee preview box before the user confirms.
+async function estimateFee() {
+  try {
+    // Read the inputs
+    const recipientAddressStr = document.getElementById('recipient-address').value.trim();
+    const amountStr = document.getElementById('send-amount').value.trim();
+
+    // Basic validation before we even try
+    if (!recipientAddressStr) {
+      showStatus('Please enter a recipient address first.', 'error');
+      return;
+    }
+    if (!amountStr || parseFloat(amountStr) <= 0) {
+      showStatus('Please enter a valid amount first.', 'error');
+      return;
+    }
+
+    const amountInSOL = parseFloat(amountStr);
+    const amountInLamports = Math.floor(amountInSOL * 1000000000);
+
+    // Validate the recipient address format
+    let recipientPublicKey;
+    try {
+      recipientPublicKey = new window.solanaWeb3.PublicKey(recipientAddressStr);
+    } catch (err) {
+      showStatus('Invalid recipient address.', 'error');
+      return;
+    }
+
+    showStatus('Estimating fee...', 'info');
+
+    // ---- Build the transaction message ----
+    // We build the full transaction just like we would for sending,
+    // but instead of sending it we ask the network for its fee.
+
+    // Step 1: Get the latest blockhash
+    // Every Solana transaction needs a recent blockhash to be valid.
+    // Think of it like a timestamp that proves the transaction is fresh.
+    const { blockhash } = await connection.getLatestBlockhash('confirmed');
+
+    // Step 2: Build the transfer instruction
+    const transferInstruction = window.solanaWeb3.SystemProgram.transfer({
+      fromPubkey: userKeypair.publicKey,
+      toPubkey: recipientPublicKey,
+      lamports: amountInLamports
+    });
+
+    // Step 3: Build the transaction message
+    // A TransactionMessage is the "unsigned" version of a transaction.
+    // We use it here just to get the fee — we don't sign it yet.
+    const message = new window.solanaWeb3.TransactionMessage({
+      payerKey: userKeypair.publicKey,   // Who pays the fee (us)
+      recentBlockhash: blockhash,         // The fresh blockhash we just got
+      instructions: [transferInstruction] // The list of things to do
+    }).compileToV0Message();
+    // compileToV0Message() converts it to the format getFeeForMessage() expects
+
+    // Step 4: Ask the network how much this transaction will cost
+    // getFeeForMessage() returns the fee in lamports, or null if it can't estimate
+    const feeResponse = await connection.getFeeForMessage(message, 'confirmed');
+
+    // feeResponse.value is the fee in lamports (or null)
+    const feeInLamports = feeResponse.value;
+
+    if (feeInLamports === null) {
+      showStatus('Could not estimate fee. Try again.', 'error');
+      return;
+    }
+
+    // Convert fee from lamports to SOL for display
+    // Fees are tiny — usually 5000 lamports = 0.000005 SOL
+    const feeInSOL = feeInLamports / 1000000000;
+
+    // Total cost = amount being sent + the fee
+    const totalInSOL = amountInSOL + feeInSOL;
+
+    // ---- Update the fee preview box ----
+    document.getElementById('fee-amount-display').textContent = amountInSOL.toFixed(6) + ' SOL';
+    document.getElementById('fee-estimate-display').textContent = feeInSOL.toFixed(6) + ' SOL';
+    document.getElementById('fee-total-display').textContent = totalInSOL.toFixed(6) + ' SOL';
+
+    // Show the fee preview box
+    document.getElementById('fee-preview').style.display = 'block';
+
+    // Hide the "Preview Fee" button and show the "Confirm & Send" button
+    document.getElementById('preview-fee-btn').style.display = 'none';
+    document.getElementById('send-sol-btn').style.display = 'block';
+
+    // Hide the status message since the preview box is now showing
+    document.getElementById('status-message').style.display = 'none';
+
+    console.log('Fee estimate:', feeInLamports, 'lamports =', feeInSOL, 'SOL');
+
+  } catch (error) {
+    console.error('Fee estimation failed:', error);
+    showStatus('Fee estimation failed: ' + error.message, 'error');
+  }
+}
+
+
+// ============================================================
 // SEND SOL
 // ============================================================
 async function sendSOL() {
@@ -411,6 +516,11 @@ async function sendSOL() {
     // Clear the form
     document.getElementById('recipient-address').value = '';
     document.getElementById('send-amount').value = '';
+
+    // Reset the fee preview — hide it and show "Preview Fee" button again
+    document.getElementById('fee-preview').style.display = 'none';
+    document.getElementById('preview-fee-btn').style.display = 'block';
+    document.getElementById('send-sol-btn').style.display = 'none';
 
     // Refresh balance and transactions after 2 seconds
     setTimeout(function () {
@@ -586,6 +696,18 @@ function deleteContact(index) {
 
 
 // ============================================================
+// UI HELPER: Reset the fee preview back to its default state
+// ============================================================
+// Called when the user edits the recipient or amount after already
+// previewing the fee — forces them to re-estimate with the new values
+function resetFeePreview() {
+  document.getElementById('fee-preview').style.display = 'none';
+  document.getElementById('preview-fee-btn').style.display = 'block';
+  document.getElementById('send-sol-btn').style.display = 'none';
+}
+
+
+// ============================================================
 // UI HELPER: Show the onboarding screen
 // ============================================================
 function showOnboardingScreen() {
@@ -685,17 +807,28 @@ function setupButtonListeners() {
     showPanel('send-panel');
   });
 
-  // Close Send panel
+  // Close Send panel — also reset the fee preview
   document.getElementById('close-send-btn').addEventListener('click', function () {
+    // Reset fee preview state so it's clean next time
+    document.getElementById('fee-preview').style.display = 'none';
+    document.getElementById('preview-fee-btn').style.display = 'block';
+    document.getElementById('send-sol-btn').style.display = 'none';
     showPanel('main-content');
   });
 
-  // Send SOL button
+  // Send SOL button (confirm step)
   document.getElementById('send-sol-btn').addEventListener('click', sendSOL);
 
+  // Preview Fee button — estimates fee and shows the preview box
+  document.getElementById('preview-fee-btn').addEventListener('click', estimateFee);
+
+  // If the user changes the recipient or amount after previewing,
+  // hide the fee preview and show "Preview Fee" again so they re-estimate
+  document.getElementById('recipient-address').addEventListener('input', resetFeePreview);
+  document.getElementById('send-amount').addEventListener('input', resetFeePreview);
+
   // Contact dropdown auto-fills recipient address
-  document.getElementById('contact-dropdown').addEventListener('change', function () {
-    if (this.value !== '') {
+  document.getElementById('contact-dropdown').addEventListener('change', function () {    if (this.value !== '') {
       document.getElementById('recipient-address').value = this.value;
     }
   });

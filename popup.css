@@ -646,3 +646,61 @@ select option {
   border-color: #555;
   color: #fff;
 }
+
+/* =============================================
+   FEE PREVIEW BOX (inside Send panel)
+   ============================================= */
+.fee-preview {
+  background-color: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 16px;
+}
+
+/* Each row inside the fee box */
+.fee-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 0;
+}
+
+/* Thin line above the total row */
+.fee-total-row {
+  border-top: 1px solid #2a2a2a;
+  margin-top: 6px;
+  padding-top: 10px;
+}
+
+.fee-label {
+  font-size: 12px;
+  color: #555;
+  font-weight: 500;
+}
+
+.fee-value {
+  font-size: 13px;
+  color: #aaa;
+  font-family: 'Courier New', monospace;
+  font-weight: 500;
+}
+
+/* The fee amount gets a green highlight so it stands out */
+.fee-highlight {
+  color: #4ade80;
+}
+
+/* Total row is white and slightly larger */
+.fee-total-row .fee-value {
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* Confirm & Send button — slightly different shade to feel like a second step */
+.send-btn-confirm {
+  background-color: #4ade80;
+  color: #0a1a0a;
+  margin-top: 4px;
+}
