@@ -208,6 +208,24 @@
          MAIN CONTENT (Recent Activity)
          ========================================= -->
     <div id="main-content">
+
+      <!-- SOL Price Chart -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <div>
+            <span class="chart-title">SOL / USD</span>
+            <span class="chart-subtitle" id="chart-subtitle">7 days</span>
+          </div>
+          <div class="chart-price-right">
+            <span id="chart-current-price" class="chart-current-price">--</span>
+            <span id="chart-change" class="chart-change">--</span>
+          </div>
+        </div>
+        <!-- The canvas element is where we draw the chart using JavaScript -->
+        <!-- width and height set the drawing resolution -->
+        <canvas id="price-chart" width="320" height="100"></canvas>
+      </div>
+
       <div class="section-header">
         <span class="section-title">Recent Activity</span>
       </div>

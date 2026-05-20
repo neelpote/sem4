@@ -202,6 +202,83 @@ body {
 }
 
 /* =============================================
+   PRICE CHART CARD
+   ============================================= */
+.chart-card {
+  margin: 0 16px 14px;
+  background-color: #111111;
+  border: 1px solid #1e1e1e;
+  border-radius: 14px;
+  padding: 14px 16px 10px;
+  overflow: hidden;
+}
+
+/* Top row: title + current price */
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.chart-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+  display: block;
+}
+
+.chart-subtitle {
+  font-size: 10px;
+  color: #444;
+  font-weight: 500;
+  margin-top: 2px;
+  display: block;
+}
+
+/* Right side: price + % change */
+.chart-price-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+}
+
+.chart-current-price {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+  font-family: 'Courier New', monospace;
+}
+
+.chart-change {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 20px;
+}
+
+/* Green badge when price is up */
+.chart-change-up {
+  color: #4ade80;
+  background-color: #1a2a1a;
+}
+
+/* Red badge when price is down */
+.chart-change-down {
+  color: #f87171;
+  background-color: #2a1a1a;
+}
+
+/* The canvas fills the full width of the card */
+#price-chart {
+  width: 100%;
+  height: 100px;
+  display: block;
+  border-radius: 6px;
+}
+
+/* =============================================
    ACTION BUTTONS (Send / Refresh)
    ============================================= */
 .actions {

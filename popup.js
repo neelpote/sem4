@@ -78,6 +78,7 @@ async function loadWalletFromStorage() {
       loadContacts();
       loadAccountsList();
       fetchSolPrice();
+      fetchAndDrawChart();
 
     } else {
       // No accounts found at all — show the onboarding screen
@@ -148,6 +149,7 @@ async function generateNewWallet() {
       loadContacts();
       loadAccountsList();
       fetchSolPrice();
+      fetchAndDrawChart();
     });
 
   } catch (error) {
@@ -317,6 +319,178 @@ function loadAccountsList() {
     }
 
   });
+}
+
+
+// ============================================================
+// FETCH AND DRAW THE 7-DAY PRICE CHART
+// ============================================================
+// Calls our price server's /api/history endpoint,
+// gets back an array of price numbers, then draws a smooth
+// line chart on the <canvas> element using plain Canvas API.
+async function fetchAndDrawChart() {
+  try {
+    const response = await fetch('http://localhost:3000/api/history');
+
+    if (!response.ok) {
+      throw new Error('Server returned ' + response.status);
+    }
+
+    const data = await response.json();
+    // data.prices is an array like [140.2, 141.5, 139.8, ...]
+    const prices = data.prices;
+
+    if (!prices || prices.length === 0) {
+      console.log('No price history available yet.');
+      return;
+    }
+
+    // --- Update the text above the chart ---
+
+    // Current price = last item in the array
+    const currentPrice = prices[prices.length - 1];
+
+    // First price = first item in the array (7 days ago)
+    const firstPrice = prices[0];
+
+    // Calculate the % change over 7 days
+    // Formula: ((current - first) / first) * 100
+    const changePercent = ((currentPrice - firstPrice) / firstPrice) * 100;
+    const changeSign = changePercent >= 0 ? '+' : '';
+
+    // Update the price and change text in the UI
+    document.getElementById('chart-current-price').textContent =
+      '$' + currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    const changeEl = document.getElementById('chart-change');
+    changeEl.textContent = changeSign + changePercent.toFixed(2) + '%';
+    // Green if price went up, red if it went down
+    changeEl.className = 'chart-change ' + (changePercent >= 0 ? 'chart-change-up' : 'chart-change-down');
+
+    // --- Draw the chart on the canvas ---
+    drawLineChart(prices);
+
+  } catch (error) {
+    console.error('Could not load chart data:', error.message);
+    // If server is off, just leave the canvas blank — no crash
+  }
+}
+
+
+// ============================================================
+// DRAW THE LINE CHART ON THE CANVAS
+// ============================================================
+// prices = array of numbers like [140.2, 141.5, 139.8, ...]
+// We use the HTML5 Canvas API to draw a smooth line chart.
+function drawLineChart(prices) {
+
+  // Get the canvas element from the HTML
+  const canvas = document.getElementById('price-chart');
+
+  // getContext('2d') gives us the drawing tools
+  const ctx = canvas.getContext('2d');
+
+  const width = canvas.width;    // 320px
+  const height = canvas.height;  // 100px
+  const padding = 8;             // Space around the edges so the line doesn't clip
+
+  // Clear the canvas before drawing (in case we redraw)
+  ctx.clearRect(0, 0, width, height);
+
+  // Find the min and max price in the data so we can scale the chart
+  // Math.min(...prices) spreads the array as individual arguments
+  const minPrice = Math.min(...prices);
+  const maxPrice = Math.max(...prices);
+
+  // The price range — used to scale prices to pixel heights
+  const priceRange = maxPrice - minPrice;
+
+  // If all prices are the same (flat line), avoid dividing by zero
+  const safeRange = priceRange === 0 ? 1 : priceRange;
+
+  // --- Helper: convert a price value to a Y pixel position ---
+  // Higher price = lower Y value (canvas Y goes top to bottom)
+  function priceToY(price) {
+    // Normalize price to 0-1 range, then flip and scale to canvas height
+    return height - padding - ((price - minPrice) / safeRange) * (height - padding * 2);
+  }
+
+  // --- Helper: convert an index to an X pixel position ---
+  function indexToX(i) {
+    return padding + (i / (prices.length - 1)) * (width - padding * 2);
+  }
+
+  // --- Draw the gradient fill under the line ---
+  // This makes the chart look like the Fuzz wallet reference
+  const gradient = ctx.createLinearGradient(0, 0, 0, height);
+
+  // Determine color based on whether price went up or down
+  const isUp = prices[prices.length - 1] >= prices[0];
+  const lineColor = isUp ? '#4ade80' : '#f87171';       // green or red
+  const gradientTop = isUp ? 'rgba(74,222,128,0.25)' : 'rgba(248,113,113,0.25)';
+  const gradientBottom = 'rgba(0,0,0,0)';
+
+  gradient.addColorStop(0, gradientTop);
+  gradient.addColorStop(1, gradientBottom);
+
+  // Start drawing the filled area path
+  ctx.beginPath();
+  ctx.moveTo(indexToX(0), priceToY(prices[0]));
+
+  // Draw a smooth curve through all the price points
+  // We use quadratic bezier curves for smoothness
+  for (let i = 1; i < prices.length; i++) {
+    const prevX = indexToX(i - 1);
+    const currX = indexToX(i);
+    const prevY = priceToY(prices[i - 1]);
+    const currY = priceToY(prices[i]);
+
+    // Control point is the midpoint between previous and current X
+    const midX = (prevX + currX) / 2;
+    ctx.quadraticCurveTo(prevX, prevY, midX, (prevY + currY) / 2);
+  }
+
+  // Finish the last segment
+  ctx.lineTo(indexToX(prices.length - 1), priceToY(prices[prices.length - 1]));
+
+  // Close the path down to the bottom of the canvas to create the fill area
+  ctx.lineTo(indexToX(prices.length - 1), height);
+  ctx.lineTo(indexToX(0), height);
+  ctx.closePath();
+
+  // Fill with the gradient
+  ctx.fillStyle = gradient;
+  ctx.fill();
+
+  // --- Draw the actual line on top of the gradient ---
+  ctx.beginPath();
+  ctx.moveTo(indexToX(0), priceToY(prices[0]));
+
+  for (let i = 1; i < prices.length; i++) {
+    const prevX = indexToX(i - 1);
+    const currX = indexToX(i);
+    const prevY = priceToY(prices[i - 1]);
+    const currY = priceToY(prices[i]);
+    const midX = (prevX + currX) / 2;
+    ctx.quadraticCurveTo(prevX, prevY, midX, (prevY + currY) / 2);
+  }
+
+  ctx.lineTo(indexToX(prices.length - 1), priceToY(prices[prices.length - 1]));
+
+  ctx.strokeStyle = lineColor;
+  ctx.lineWidth = 2;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.stroke();
+
+  // --- Draw a dot at the current (last) price point ---
+  const dotX = indexToX(prices.length - 1);
+  const dotY = priceToY(prices[prices.length - 1]);
+
+  ctx.beginPath();
+  ctx.arc(dotX, dotY, 3.5, 0, Math.PI * 2);
+  ctx.fillStyle = lineColor;
+  ctx.fill();
 }
 
 
