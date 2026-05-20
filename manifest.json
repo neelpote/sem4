@@ -7,6 +7,10 @@
     "storage",
     "clipboardWrite"
   ],
+  "host_permissions": [
+    "http://localhost:3000/*",
+    "https://api.coingecko.com/*"
+  ],
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'"
   },

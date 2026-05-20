@@ -325,54 +325,71 @@ function loadAccountsList() {
 // ============================================================
 // FETCH AND DRAW THE 7-DAY PRICE CHART
 // ============================================================
-// Calls our price server's /api/history endpoint,
-// gets back an array of price numbers, then draws a smooth
-// line chart on the <canvas> element using plain Canvas API.
+// First tries our local price server.
+// If that fails (server not running), falls back to CoinGecko directly.
 async function fetchAndDrawChart() {
   try {
-    const response = await fetch('http://localhost:3000/api/history');
+    let prices = null;
 
-    if (!response.ok) {
-      throw new Error('Server returned ' + response.status);
+    // --- Try the local price server first ---
+    try {
+      const response = await fetch('http://localhost:3000/api/history');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.prices && data.prices.length > 0) {
+          prices = data.prices;
+          console.log('Chart data loaded from local server.');
+        }
+      }
+    } catch (localError) {
+      // Local server not running — that's fine, we'll try CoinGecko directly
+      console.log('Local server unavailable, falling back to CoinGecko...');
     }
 
-    const data = await response.json();
-    // data.prices is an array like [140.2, 141.5, 139.8, ...]
-    const prices = data.prices;
+    // --- Fallback: fetch directly from CoinGecko ---
+    if (!prices) {
+      const cgUrl = 'https://api.coingecko.com/api/v3/coins/solana/market_chart?vs_currency=usd&days=7';
+      const cgResponse = await fetch(cgUrl);
+
+      if (!cgResponse.ok) {
+        throw new Error('CoinGecko returned ' + cgResponse.status);
+      }
+
+      const cgData = await cgResponse.json();
+
+      // cgData.prices is an array of [timestamp, price] pairs
+      // We only need the price values (index 1 of each pair)
+      prices = cgData.prices.map(function (point) {
+        return point[1];
+      });
+
+      console.log('Chart data loaded from CoinGecko. Points:', prices.length);
+    }
 
     if (!prices || prices.length === 0) {
-      console.log('No price history available yet.');
+      console.log('No price data available.');
       return;
     }
 
-    // --- Update the text above the chart ---
-
-    // Current price = last item in the array
+    // --- Update the header text ---
     const currentPrice = prices[prices.length - 1];
-
-    // First price = first item in the array (7 days ago)
     const firstPrice = prices[0];
-
-    // Calculate the % change over 7 days
-    // Formula: ((current - first) / first) * 100
     const changePercent = ((currentPrice - firstPrice) / firstPrice) * 100;
     const changeSign = changePercent >= 0 ? '+' : '';
 
-    // Update the price and change text in the UI
     document.getElementById('chart-current-price').textContent =
       '$' + currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     const changeEl = document.getElementById('chart-change');
     changeEl.textContent = changeSign + changePercent.toFixed(2) + '%';
-    // Green if price went up, red if it went down
     changeEl.className = 'chart-change ' + (changePercent >= 0 ? 'chart-change-up' : 'chart-change-down');
 
-    // --- Draw the chart on the canvas ---
+    // --- Draw the chart ---
     drawLineChart(prices);
 
   } catch (error) {
     console.error('Could not load chart data:', error.message);
-    // If server is off, just leave the canvas blank — no crash
+    document.getElementById('chart-current-price').textContent = 'Unavailable';
   }
 }
 
